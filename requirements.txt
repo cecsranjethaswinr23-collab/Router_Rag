@@ -1,0 +1,21 @@
+# PDF Processing
+pymupdf4llm
+
+# LangChain Core & Integrations
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-huggingface
+langchain-google-genai
+
+# Embeddings & Vector Search
+sentence-transformers
+faiss-cpu
+
+# UI & Utilities
+streamlit
+python-dotenv
+
+# Rag evaluation
+ragas
