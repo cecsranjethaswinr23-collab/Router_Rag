@@ -1,6 +1,6 @@
 # PDF Processing
 pymupdf4llm
-PyMuPDF
+PyMuPDFpip install ipykernel
 pathlib
 
 # LangChain Core & Integrations
