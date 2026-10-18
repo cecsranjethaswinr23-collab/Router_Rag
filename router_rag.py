@@ -1,4 +1,5 @@
 import os
+import argparse
 from dotenv import load_dotenv
 from typing import List, Literal, TypedDict
 from pydantic import BaseModel, Field
@@ -31,7 +32,7 @@ class RoutingDecision(BaseModel):
 # ==============================================================================
 # 2. Initialize Embeddings & Vector Databases
 # ==============================================================================
-print("Loading Embeddings & Databases...")
+print("-----Loading Embeddings & Databases-----")
 hf_embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 
@@ -56,17 +57,17 @@ def router_node(state: AgentState) -> dict:
     return {"route": decision.destination}
 
 def retrieve_insurance_node(state: AgentState) -> dict:
-    docs = db_insurance.similarity_search(state["query"], k=2)
+    docs = db_insurance.similarity_search(state["query"], k=4)
     context = "\n---\n".join([d.page_content for d in docs])
     return {"context": f"[INSURANCE DB]\n{context}"}
 
 def retrieve_motor_laws_node(state: AgentState) -> dict:
-    docs = db_motor_laws.similarity_search(state["query"], k=2)
+    docs = db_motor_laws.similarity_search(state["query"], k=4)
     context = "\n---\n".join([d.page_content for d in docs])
     return {"context": f"[MOTOR LAWS DB]\n{context}"}
 
 def web_search_node(state: AgentState) -> dict:
-    results = DDGS().text(state["query"], max_results=3)
+    results = DDGS().text(state["query"], max_results=4)
     context = "\n---\n".join([f"{r['title']}: {r['body']}" for r in results])
     return {"context": f"[WEB SEARCH]\n{context}"}
 
@@ -138,5 +139,16 @@ if __name__ == "__main__":
 
     result = app.invoke({"query": args.query})
 
+    raw_answer = result.get("final_answer", "")
+
+    # Safely convert list responses into a single string
+    if isinstance(raw_answer, list):
+        answer_text = "\n".join(
+            item.get("text", str(item)) if isinstance(item, dict) else str(item)
+            for item in raw_answer
+        )
+    else:
+        answer_text = str(raw_answer)
+
     print(f"\n[Route]: {result.get('route')}")
-    print(f"[Answer]:\n{result.get('final_answer', '').strip()}\n")
+    print(f"[Answer]:\n{answer_text.strip()}\n")
