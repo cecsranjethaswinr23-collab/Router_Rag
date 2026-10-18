@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from typing import List, Literal, TypedDict
 from pydantic import BaseModel, Field
 from duckduckgo_search import DDGS
@@ -8,6 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 
+load_dotenv()
 # ==============================================================================
 # 1. State Definition & Router Schema
 # ==============================================================================
@@ -18,15 +20,13 @@ class AgentState(TypedDict):
     final_answer: str
 
 class RoutingDecision(BaseModel):
-    destination: Literal["db_insurance", "db_motor_laws", "web_search", "direct_chat"] = Field(
-        ...,
-        description=(
-            "Route to 'db_insurance' for insurance policies, claims, or coverage. "
-            "Route to 'db_motor_laws' for legal sections, traffic violations, and acts. "
-            "Route to 'web_search' for live, dynamic data like stock prices, current gold rates, or recent news. "
-            "Route to 'direct_chat' for basic greetings (e.g., 'how are you') or general conversational questions."
-        )
-    )
+    destination: Literal["db_insurance", "db_motor_laws", "web_search", "direct_chat"] = Field(...,
+                                                                                               description=("Route to 'db_insurance' for insurance policies, claims, or coverage of the companies like Star, United India, HDFC, Care. "
+                                                                                                            "Route to 'db_motor_laws' for legal sections, traffic violations, and vehicles do's and dont's. "
+                                                                                                            "Route to 'web_search' for live, dynamic data like stock prices, current gold rates, or recent news that are non-conversational queries "
+                                                                                                            "Route to 'direct_chat' for basic greetings (e.g., 'how are you', how was the weather) or general conversational questions and simple general questions in day to day life humans would know."
+                                                                                                            )
+                                                                                                )
 
 # ==============================================================================
 # 2. Initialize Embeddings & Vector Databases
@@ -34,13 +34,14 @@ class RoutingDecision(BaseModel):
 print("Loading Embeddings & Databases...")
 hf_embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
+
+
 # Mocking the local FAISS databases for demonstration. 
-# In production, use: FAISS.load_local("path/to/db", hf_embeddings)
-db_insurance = FAISS.from_texts(["Zero depreciation covers 100% of plastic parts."], hf_embeddings)
-db_motor_laws = FAISS.from_texts(["Section 194D mandates a Rs. 2000 fine for driving without insurance."], hf_embeddings)
+db_insurance = FAISS.load_local("faiss_index",hf_embeddings,allow_dangerous_deserialization=True)
+db_motor_laws =  FAISS.load_local("laws_faiss_index",hf_embeddings,allow_dangerous_deserialization=True)
 
 # Initialize the LLM (Gemini used here as the engine)
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.1)
 router_llm = llm.with_structured_output(RoutingDecision)
 
 # ==============================================================================
@@ -49,7 +50,7 @@ router_llm = llm.with_structured_output(RoutingDecision)
 def router_node(state: AgentState) -> dict:
     """The LLM analyzes the query and decides the route."""
     decision = router_llm.invoke([
-        SystemMessage(content="You are a smart routing agent. Classify the user query."),
+        SystemMessage(content="You are a smart routing agent. Classify the user query based on the contents actually mentioned like a logical human."),
         HumanMessage(content=state["query"])
     ])
     return {"route": decision.destination}
